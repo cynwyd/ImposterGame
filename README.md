@@ -12,16 +12,16 @@ Does it work and did GenAI make most of this? Yes.
    ```bash
    git clone <repository-url>
    cd <repository-folder>
-  ```
+   ```
 2. Install dependencies
-```
-npm install
-```
+   ```
+   npm install
+   ```
 3. Run server
-```
-node backend/server.js
-```
+   ```
+   node backend/server.js
+   ```
 4. Open the application in your browser, I'd recommend setting up some sort of reverse proxy:
-```
-Navigate to http://localhost:3000
-```
+   ```
+   Navigate to http://localhost:3000
+   ```
