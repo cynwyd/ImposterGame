@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Room Join Game</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; max-width: 400px; margin: auto; }
+    input, button { margin-top: 1rem; width: 100%; padding: 0.5rem; font-size: 1rem; }
+    #log { margin-top: 2rem; background: #f0f0f0; padding: 1rem; height: 150px; overflow-y: auto; }
+    #userId { margin-top: 1rem; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>Join or Create a Room</h2>
+
+  <input type="text" id="nameInput" placeholder="Enter your name" />
+  <button id="setNameBtn">Set Name</button>
+
+  <button id="createBtn" disabled>Create Room</button>
+
+  <input type="text" id="roomCodeInput" placeholder="Enter room code to join" disabled />
+  <button id="joinBtn" disabled>Join Room</button>
+
+  <div id="userId">Your Name: <span id="userIdValue">Not set</span></div>
+  <div id="log"></div>
+
+  <script>
+    const socket = io(); // Assumes same host (adjust if different domain)
+    let userName = null;
+
+    const log = (msg) => {
+      document.getElementById('log').innerHTML += `<div>> ${msg}</div>`;
+    };
+
+    document.getElementById('setNameBtn').addEventListener('click', () => {
+      const nameInput = document.getElementById('nameInput').value.trim();
+      if (nameInput) {
+        userName = nameInput;
+        document.getElementById('userIdValue').textContent = userName;
+        document.getElementById('createBtn').disabled = false;
+        document.getElementById('joinBtn').disabled = false;
+        document.getElementById('roomCodeInput').disabled = false;
+        socket.emit('set-name', userName);
+      } else {
+        log('Please enter a valid name.');
+      }
+    });
+
+    document.getElementById('createBtn').addEventListener('click', () => {
+      socket.emit('create-room');
+    });
+
+    document.getElementById('joinBtn').addEventListener('click', () => {
+      const roomCode = document.getElementById('roomCodeInput').value.trim();
+      if (roomCode) {
+        socket.emit('join-room', { roomCode, userName });
+      } else {
+        log('Please enter a room code.');
+      }
+    });
+
+    socket.on('room-created', (roomCode) => {
+      log(`Room created! Code: ${roomCode}`);
+    });
+
+    socket.on('user-joined', (name) => {
+      log(`${name} joined the room.`);
+    });
+
+    socket.on('error', (msg) => {
+      log(`Error: ${msg}`);
+    });
+  </script>
+</body>
+</html>
