@@ -9,21 +9,29 @@
     input, button { margin-top: 1rem; width: 100%; padding: 0.5rem; font-size: 1rem; }
     #log { margin-top: 2rem; background: #f0f0f0; padding: 1rem; height: 150px; overflow-y: auto; }
     #userId { margin-top: 1rem; font-weight: bold; }
+    #controls { display: block; }
+    #logContainer { display: none; }
   </style>
 </head>
 <body>
-  <h2>Join or Create a Room</h2>
+  <div id="controls">
+    <h2>Join or Create a Room</h2>
 
-  <input type="text" id="nameInput" placeholder="Enter your name" />
-  <button id="setNameBtn">Set Name</button>
+    <input type="text" id="nameInput" placeholder="Enter your name" />
+    <button id="setNameBtn">Set Name</button>
 
-  <button id="createBtn" disabled>Create Room</button>
+    <button id="createBtn" disabled>Create Room</button>
 
-  <input type="text" id="roomCodeInput" placeholder="Enter room code to join" disabled />
-  <button id="joinBtn" disabled>Join Room</button>
+    <input type="text" id="roomCodeInput" placeholder="Enter room code to join" disabled />
+    <button id="joinBtn" disabled>Join Room</button>
 
-  <div id="userId">Your Name: <span id="userIdValue">Not set</span></div>
-  <div id="log"></div>
+    <div id="userId">Your Name: <span id="userIdValue">Not set</span></div>
+  </div>
+
+  <div id="logContainer">
+    <h2>Log</h2>
+    <div id="log"></div>
+  </div>
 
   <script>
     const socket = io(); // Assumes same host (adjust if different domain)
@@ -62,15 +70,22 @@
 
     socket.on('room-created', (roomCode) => {
       log(`Room created! Code: ${roomCode}`);
+      showLogOnly();
     });
 
     socket.on('user-joined', (name) => {
       log(`${name} joined the room.`);
+      showLogOnly();
     });
 
     socket.on('error', (msg) => {
       log(`Error: ${msg}`);
     });
+
+    const showLogOnly = () => {
+      document.getElementById('controls').style.display = 'none';
+      document.getElementById('logContainer').style.display = 'block';
+    };
   </script>
 </body>
 </html>
