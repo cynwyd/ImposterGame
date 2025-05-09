@@ -117,6 +117,7 @@
     <h2>Log</h2>
     <div id="log"></div>
     <button id="startGameBtn" style="display: none;">Start Round</button>
+    <button id="listUsersBtn" style="display: none;">List Users</button>
 
     <div id="answerContainer" style="display: none;">
       <h3>Submit Your Answer</h3>
@@ -247,12 +248,25 @@
       }
     });
 
+    document.getElementById('listUsersBtn').addEventListener('click', () => {
+      socket.emit('get-users', { roomCode });
+    });
+
+    socket.on('user-list', (users) => {
+      log('Current users in the room:');
+      users.forEach(user => log(user));
+    });
+
     socket.on('room-created', ({ roomCode: code, isAdmin: adminFlag }) => {
       roomCode = code;
       isAdmin = adminFlag; // Set the admin flag
       log(`Room created! Code: ${roomCode}`);
       if (isAdmin) {
-        document.getElementById('startGameBtn').style.display = 'block'; // Show the button only for the admin
+        document.getElementById('startGameBtn').style.display = 'block';
+        document.getElementById('listUsersBtn').style.display = 'block'; // Show the button for the admin
+      } else {
+        document.getElementById('startGameBtn').style.display = 'none';
+        document.getElementById('listUsersBtn').style.display = 'none'; // Hide the button for non-admins
       }
       showLogOnly();
     });
@@ -262,9 +276,11 @@
       isAdmin = adminFlag; // Set the admin flag
       log(`Joined room: ${roomCode}`);
       if (isAdmin) {
-        document.getElementById('startGameBtn').style.display = 'block'; // Show the button only for the admin
+        document.getElementById('startGameBtn').style.display = 'block';
+        document.getElementById('listUsersBtn').style.display = 'block'; // Show the button for the admin
       } else {
-        document.getElementById('startGameBtn').style.display = 'none'; // Hide the button for non-admins
+        document.getElementById('startGameBtn').style.display = 'none';
+        document.getElementById('listUsersBtn').style.display = 'none'; // Hide the button for non-admins
       }
       showLogOnly();
     });
@@ -302,57 +318,6 @@
     // Add a separator to the log when a new round starts
     socket.on('round-started', () => {
       log('--------------');
-    });
-
-    // Update the user list when a user joins or is kicked
-    socket.on('user-joined', (userName) => {
-      log(`${userName} joined the room.`);
-      updateUserList();
-    });
-
-    socket.on('user-kicked', ({ userName }) => {
-      log(`${userName} was kicked from the room.`);
-      updateUserList();
-    });
-
-    const updateUserList = () => {
-      if (isAdmin) {
-        const userList = document.getElementById('userList');
-        userList.innerHTML = ''; // Clear the list
-        rooms[roomCode].forEach((user) => {
-          const listItem = document.createElement('li');
-          listItem.textContent = user.name;
-
-          // Add a "Kick" button for each user
-          if (user.id !== socket.id) { // Prevent admin from kicking themselves
-            const kickButton = document.createElement('button');
-            kickButton.textContent = 'Kick';
-            kickButton.style.marginLeft = '10px';
-            kickButton.addEventListener('click', () => {
-              socket.emit('kick-user', { roomCode, userId: user.id });
-            });
-            listItem.appendChild(kickButton);
-          }
-
-          userList.appendChild(listItem);
-        });
-        document.getElementById('userListContainer').style.display = 'block';
-      }
-    };
-
-    // Handle being kicked
-    socket.on('kicked', () => {
-      alert('You have been kicked from the room.');
-      location.reload(); // Reload the page to reset the session
-    });
-
-    // Update the user list when the room is joined
-    socket.on('room-joined', ({ roomCode: code, isAdmin: adminFlag }) => {
-      roomCode = code;
-      isAdmin = adminFlag;
-      if (isAdmin) {
-        updateUserList();
-      }
     });
   </script>
 </body>

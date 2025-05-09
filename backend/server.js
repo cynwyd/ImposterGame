@@ -173,21 +173,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('kick-user', ({ roomCode, userId }) => {
-    if (roomAdmins[roomCode] === socket.id) {
-      // Check if the user to be kicked exists in the room
-      const userIndex = rooms[roomCode].findIndex((user) => user.id === userId);
-      if (userIndex !== -1) {
-        const kickedUser = rooms[roomCode][userIndex];
-        rooms[roomCode].splice(userIndex, 1); // Remove the user from the room
-        io.to(userId).emit('kicked'); // Notify the kicked user
-        io.to(roomCode).emit('user-kicked', { userName: kickedUser.name, userId }); // Notify the room
-        console.log(`User ${kickedUser.name} was kicked from room ${roomCode}`);
-      } else {
-        socket.emit('error', 'User not found in the room.');
-      }
+  socket.on('get-users', ({ roomCode }) => {
+    if (rooms[roomCode]) {
+      const users = rooms[roomCode].map(user => user.name);
+      socket.emit('user-list', users); // Send the list of users back to the admin
     } else {
-      socket.emit('error', 'Only the admin can kick users.');
+      socket.emit('error', 'Room not found');
     }
   });
 
