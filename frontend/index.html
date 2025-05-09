@@ -2,43 +2,195 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Room Join Game</title>
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 2rem; max-width: 400px; margin: auto; }
-    input, button { margin-top: 1rem; width: 100%; padding: 0.5rem; font-size: 1rem; }
-    #log { margin-top: 2rem; background: #f0f0f0; padding: 1rem; height: 150px; overflow-y: auto; }
-    #userId { margin-top: 1rem; font-weight: bold; }
-    #controls { display: block; }
-    #logContainer { display: none; }
+    /* General Styles */
+    body {
+      font-family: 'Arial', sans-serif;
+      padding: 1rem;
+      margin: 0;
+      background-color: #f9f9f9;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    h2, h3 {
+      text-align: center;
+      color: #444;
+    }
+
+    input, button {
+      margin-top: 1rem;
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    #log {
+      margin-top: 1rem;
+      background: #fff;
+      padding: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      height: 150px;
+      overflow-y: auto;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    #banner {
+      display: none;
+      background-color: #ffcc00;
+      color: #000;
+      text-align: center;
+      padding: 1rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
+      border-radius: 5px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    #controls, #logContainer {
+      width: 100%;
+      max-width: 400px;
+    }
+
+    #customQuestions input {
+      margin-top: 0.5rem;
+    }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 600px) {
+      body {
+        padding: 0.5rem;
+      }
+
+      input, button {
+        font-size: 0.9rem;
+        padding: 0.5rem;
+      }
+
+      #log {
+        height: 120px;
+      }
+    }
   </style>
 </head>
 <body>
+  <div id="banner">Round is ongoing!</div>
+
   <div id="controls">
     <h2>Join or Create a Room</h2>
 
+    <div id="userId">Your Name: <span id="userIdValue">Not set</span></div>
     <input type="text" id="nameInput" placeholder="Enter your name" />
     <button id="setNameBtn">Set Name</button>
-
-    <button id="createBtn" disabled>Create Room</button>
 
     <input type="text" id="roomCodeInput" placeholder="Enter room code to join" disabled />
     <button id="joinBtn" disabled>Join Room</button>
 
-    <div id="userId">Your Name: <span id="userIdValue">Not set</span></div>
+    <button id="createBtn" disabled>Create Room</button>
   </div>
 
-  <div id="logContainer">
+  <div id="logContainer" style="display: none;">
     <h2>Log</h2>
     <div id="log"></div>
+    <button id="startGameBtn" style="display: none;">Start Round</button>
+
+    <div id="answerContainer" style="display: none;">
+      <h3>Submit Your Answer</h3>
+      <input type="text" id="answerInput" placeholder="Enter your answer" />
+      <button id="submitAnswerBtn">Submit Answer</button>
+    </div>
+
+    <div id="customQuestions">
+      <h3>Submit Questions for the Next Round</h3>
+      <input type="text" id="questionInput" placeholder="Enter a question for everyone" />
+      <input type="text" id="impostorQuestionInput" placeholder="Enter a question for the impostor" />
+      <button id="submitQuestionsBtn">Submit Questions</button>
+    </div>
+  </div>
+
+  <div id="userListContainer" style="display: none;">
+    <h3>Users in Room</h3>
+    <ul id="userList"></ul>
   </div>
 
   <script>
-    const socket = io(); // Assumes same host (adjust if different domain)
+    const socket = io({
+      reconnection: true, // Enable reconnection
+      reconnectionAttempts: 5, // Number of attempts before giving up
+      reconnectionDelay: 1000, // Initial delay between attempts (in ms)
+      reconnectionDelayMax: 5000, // Maximum delay between attempts (in ms)
+    });
+
+    socket.on('connect', () => {
+      log('Connected to the server.');
+      if (userName && roomCode) {
+        // Notify the server that the user has reconnected
+        socket.emit('rejoin-room', { roomCode, userName });
+      }
+    });
+
+    socket.on('disconnect', () => {
+      log('Disconnected from the server. Attempting to reconnect...');
+    });
+
+    socket.on('reconnect', (attemptNumber) => {
+      log(`Reconnected to the server after ${attemptNumber} attempt(s).`);
+    });
+
+    socket.on('reconnect_failed', () => {
+      log('Failed to reconnect to the server.');
+    });
+
+    socket.on('rejoin-success', () => {
+      log('Successfully rejoined the room.');
+    });
+
+    socket.on('rejoin-failed', (message) => {
+      log(`Failed to rejoin the room: ${message}`);
+    });
+
     let userName = null;
+    let roomCode = null;
+    let customQuestions = null;
+    let isAdmin = false; // Track if the current user is the admin
 
     const log = (msg) => {
-      document.getElementById('log').innerHTML += `<div>> ${msg}</div>`;
+      const logContainer = document.getElementById('log');
+      logContainer.innerHTML += `<div>> ${msg}</div>`;
+      scrollLogToBottom(); // Automatically scroll to the bottom
+    };
+
+    const scrollLogToBottom = () => {
+      const logContainer = document.getElementById('log');
+      logContainer.scrollTop = logContainer.scrollHeight;
+    };
+
+    const showBanner = () => {
+      document.getElementById('banner').style.display = 'block';
     };
 
     document.getElementById('setNameBtn').addEventListener('click', () => {
@@ -60,7 +212,7 @@
     });
 
     document.getElementById('joinBtn').addEventListener('click', () => {
-      const roomCode = document.getElementById('roomCodeInput').value.trim();
+      roomCode = document.getElementById('roomCodeInput').value.trim();
       if (roomCode) {
         socket.emit('join-room', { roomCode, userName });
       } else {
@@ -68,14 +220,74 @@
       }
     });
 
-    socket.on('room-created', (roomCode) => {
+    document.getElementById('startGameBtn').addEventListener('click', () => {
+      socket.emit('start-game', { roomCode, customQuestions });
+      customQuestions = null; // Reset custom questions after starting the round
+    });
+
+    document.getElementById('submitQuestionsBtn').addEventListener('click', () => {
+      const question = document.getElementById('questionInput').value.trim();
+      const impostorQuestion = document.getElementById('impostorQuestionInput').value.trim();
+
+      if (question && impostorQuestion) {
+        socket.emit('submit-custom-question', { roomCode, question, impostorQuestion, userName });
+      } else {
+        log('Please fill out both question fields.');
+      }
+    });
+
+    document.getElementById('submitAnswerBtn').addEventListener('click', () => {
+      const answer = document.getElementById('answerInput').value.trim();
+      if (answer) {
+        socket.emit('submit-answer', { roomCode, answer });
+        document.getElementById('answerContainer').style.display = 'none'; // Hide the answer input after submission
+        log(`You submitted your answer.`);
+      } else {
+        log('Please enter an answer before submitting.');
+      }
+    });
+
+    socket.on('room-created', ({ roomCode: code, isAdmin: adminFlag }) => {
+      roomCode = code;
+      isAdmin = adminFlag; // Set the admin flag
       log(`Room created! Code: ${roomCode}`);
+      if (isAdmin) {
+        document.getElementById('startGameBtn').style.display = 'block'; // Show the button only for the admin
+      }
+      showLogOnly();
+    });
+
+    socket.on('room-joined', ({ roomCode: code, isAdmin: adminFlag }) => {
+      roomCode = code;
+      isAdmin = adminFlag; // Set the admin flag
+      log(`Joined room: ${roomCode}`);
+      if (isAdmin) {
+        document.getElementById('startGameBtn').style.display = 'block'; // Show the button only for the admin
+      } else {
+        document.getElementById('startGameBtn').style.display = 'none'; // Hide the button for non-admins
+      }
       showLogOnly();
     });
 
     socket.on('user-joined', (name) => {
       log(`${name} joined the room.`);
-      showLogOnly();
+    });
+
+    socket.on('receive-question', (question) => {
+      log(`Your question: ${question}`);
+      showBanner(); // Show the banner when the round starts
+      document.getElementById('answerContainer').style.display = 'block'; // Show the answer input
+    });
+
+    socket.on('all-answers-submitted', ({ originalQuestion, allAnswers }) => {
+      log(`Original Question: ${originalQuestion}`);
+      allAnswers.forEach(({ name, answer }) => {
+        log(`${name}: ${answer}`);
+      });
+    });
+
+    socket.on('custom-question-submitted', ({ userName, question, impostorQuestion }) => {
+      log(`${userName} submitted new custom questions.`);
     });
 
     socket.on('error', (msg) => {
@@ -86,6 +298,62 @@
       document.getElementById('controls').style.display = 'none';
       document.getElementById('logContainer').style.display = 'block';
     };
+
+    // Add a separator to the log when a new round starts
+    socket.on('round-started', () => {
+      log('--------------');
+    });
+
+    // Update the user list when a user joins or is kicked
+    socket.on('user-joined', (userName) => {
+      log(`${userName} joined the room.`);
+      updateUserList();
+    });
+
+    socket.on('user-kicked', ({ userName }) => {
+      log(`${userName} was kicked from the room.`);
+      updateUserList();
+    });
+
+    const updateUserList = () => {
+      if (isAdmin) {
+        const userList = document.getElementById('userList');
+        userList.innerHTML = ''; // Clear the list
+        rooms[roomCode].forEach((user) => {
+          const listItem = document.createElement('li');
+          listItem.textContent = user.name;
+
+          // Add a "Kick" button for each user
+          if (user.id !== socket.id) { // Prevent admin from kicking themselves
+            const kickButton = document.createElement('button');
+            kickButton.textContent = 'Kick';
+            kickButton.style.marginLeft = '10px';
+            kickButton.addEventListener('click', () => {
+              socket.emit('kick-user', { roomCode, userId: user.id });
+            });
+            listItem.appendChild(kickButton);
+          }
+
+          userList.appendChild(listItem);
+        });
+        document.getElementById('userListContainer').style.display = 'block';
+      }
+    };
+
+    // Handle being kicked
+    socket.on('kicked', () => {
+      alert('You have been kicked from the room.');
+      location.reload(); // Reload the page to reset the session
+    });
+
+    // Update the user list when the room is joined
+    socket.on('room-joined', ({ roomCode: code, isAdmin: adminFlag }) => {
+      roomCode = code;
+      isAdmin = adminFlag;
+      if (isAdmin) {
+        updateUserList();
+      }
+    });
   </script>
 </body>
 </html>

@@ -1,0 +1,40 @@
+{
+    "question_sets": [
+      {
+        "set_id": 1,
+        "questions": [
+          "What is the oldest age you would date?",
+          "Pick a number from 22 to 50."
+        ]
+      },
+      {
+        "set_id": 2,
+        "questions": [
+          "How fast can you run a marathon?",
+          "How fast can you finish the SAT?"
+        ]
+      },
+      {
+        "set_id": 3,
+        "questions": [
+          "What's a hobby you'd like to try if you had more time?",
+          "Pick something you've never done before but find intriguing."
+        ]
+      },
+      {
+        "set_id": 4,
+        "questions": [
+          "Which celebrity do you admire most?",
+          "Name a public figure you think has a good heart."
+        ]
+      },
+      {
+        "set_id": 5,
+        "questions": [
+          "If you won $10,000 right now, what would you do?",
+          "What's something expensive you'd buy if money wasn't an issue?"
+        ]
+      }
+    ]
+}
+  
