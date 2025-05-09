@@ -66,6 +66,7 @@ io.on('connection', (socket) => {
     }
   });
 
+  // TODO: Don't let users not in the room submit answers
   socket.on('submit-custom-question', ({ roomCode, question, impostorQuestion, userName }) => {
     if (rooms[roomCode]) {
       // Store the latest custom question for the room
@@ -177,6 +178,24 @@ io.on('connection', (socket) => {
     if (rooms[roomCode]) {
       const users = rooms[roomCode].map(user => user.name);
       socket.emit('user-list', users); // Send the list of users back to the admin
+    } else {
+      socket.emit('error', 'Room not found');
+    }
+  });
+
+  socket.on('kick-user', ({ roomCode, userName }) => {
+    if (rooms[roomCode]) {
+      const userToKick = rooms[roomCode].find(user => user.name === userName);
+
+      if (userToKick) {
+        // Remove the user from the room
+        rooms[roomCode] = rooms[roomCode].filter(user => user.id !== userToKick.id);
+        io.to(userToKick.id).emit('kicked'); // Notify the kicked user
+        io.to(roomCode).emit('user-kicked', userName); // Notify the room
+        console.log(`User ${userName} was kicked from room ${roomCode}`);
+      } else {
+        socket.emit('error', `User ${userName} not found in room ${roomCode}`);
+      }
     } else {
       socket.emit('error', 'Room not found');
     }

@@ -133,9 +133,10 @@
     </div>
   </div>
 
-  <div id="userListContainer" style="display: none;">
-    <h3>Users in Room</h3>
-    <ul id="userList"></ul>
+  <div id="kickUserContainer" style="display: none;">
+    <h3>Kick a User</h3>
+    <input type="text" id="kickUserInput" placeholder="Enter username to kick" />
+    <button id="kickUserBtn">Kick User</button>
   </div>
 
   <script>
@@ -252,6 +253,15 @@
       socket.emit('get-users', { roomCode });
     });
 
+    document.getElementById('kickUserBtn').addEventListener('click', () => {
+      const userNameToKick = document.getElementById('kickUserInput').value.trim();
+      if (userNameToKick) {
+        socket.emit('kick-user', { roomCode, userName: userNameToKick });
+      } else {
+        log('Please enter a username to kick.');
+      }
+    });
+
     socket.on('user-list', (users) => {
       log('Current users in the room:');
       users.forEach(user => log(user));
@@ -264,9 +274,11 @@
       if (isAdmin) {
         document.getElementById('startGameBtn').style.display = 'block';
         document.getElementById('listUsersBtn').style.display = 'block'; // Show the button for the admin
+        document.getElementById('kickUserContainer').style.display = 'block'; // Show the kick user section
       } else {
         document.getElementById('startGameBtn').style.display = 'none';
         document.getElementById('listUsersBtn').style.display = 'none'; // Hide the button for non-admins
+        document.getElementById('kickUserContainer').style.display = 'none'; // Hide the kick user section
       }
       showLogOnly();
     });
@@ -278,9 +290,11 @@
       if (isAdmin) {
         document.getElementById('startGameBtn').style.display = 'block';
         document.getElementById('listUsersBtn').style.display = 'block'; // Show the button for the admin
+        document.getElementById('kickUserContainer').style.display = 'block'; // Show the kick user section
       } else {
         document.getElementById('startGameBtn').style.display = 'none';
         document.getElementById('listUsersBtn').style.display = 'none'; // Hide the button for non-admins
+        document.getElementById('kickUserContainer').style.display = 'none'; // Hide the kick user section
       }
       showLogOnly();
     });
@@ -304,6 +318,15 @@
 
     socket.on('custom-question-submitted', ({ userName, question, impostorQuestion }) => {
       log(`${userName} submitted new custom questions.`);
+    });
+
+    socket.on('kicked', () => {
+      log('You have been kicked from the room.');
+      // Optionally, redirect the user to the main screen or disable further actions
+    });
+
+    socket.on('user-kicked', (userName) => {
+      log(`${userName} has been kicked from the room.`);
     });
 
     socket.on('error', (msg) => {
